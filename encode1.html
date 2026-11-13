@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MP4 Patcher v2 — TikTok Compression Bypass</title>
+<style>
+  :root {
+    --bg: #0f1117; --surface: #1a1d27; --surface2: #242836;
+    --border: #2e3345; --text: #e8eaf0; --text-dim: #8b90a5;
+    --accent: #6c5ce7; --accent2: #a29bfe; --success: #00cec9;
+    --warning: #fdcb6e; --danger: #ff7675; --radius: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg); color: var(--text);
+    min-height: 100vh; padding: 24px 16px 60px; line-height: 1.5;
+  }
+  .container { max-width: 860px; margin: 0 auto; }
+  header { text-align: center; margin-bottom: 24px; }
+  header h1 {
+    font-size: 1.8rem; font-weight: 700;
+    background: linear-gradient(135deg, var(--accent2), var(--success));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    margin-bottom: 6px;
+  }
+  header p { color: var(--text-dim); font-size: 0.9rem; }
+  .version-badge {
+    display: inline-block; background: var(--success); color: var(--bg);
+    padding: 2px 10px; border-radius: 20px; font-size: 0.7rem;
+    font-weight: 700; margin-left: 8px; vertical-align: middle;
+  }
+
+  .tabs { display: flex; gap: 8px; background: var(--surface); padding: 6px; border-radius: var(--radius); margin-bottom: 20px; }
+  .tab {
+    flex: 1; padding: 12px 10px; border: none; background: transparent;
+    color: var(--text-dim); font-weight: 600; font-size: 0.82rem;
+    border-radius: 10px; cursor: pointer; transition: all 0.2s;
+  }
+  .tab.active { background: var(--accent); color: #fff; box-shadow: 0 2px 12px rgba(108,92,231,0.35); }
+  .tab:hover:not(.active) { background: var(--surface2); color: var(--text); }
+
+  .dropzone {
+    border: 2px dashed var(--border); border-radius: var(--radius);
+    padding: 40px 20px; text-align: center; cursor: pointer;
+    transition: all 0.2s; background: var(--surface); margin-bottom: 16px;
+  }
+  .dropzone:hover, .dropzone.dragover { border-color: var(--accent); background: rgba(108,92,231,0.08); }
+  .dropzone .icon { font-size: 2.4rem; margin-bottom: 10px; }
+  .dropzone p { color: var(--text-dim); font-size: 0.9rem; }
+  .dropzone .filename { color: var(--accent2); font-weight: 600; margin-top: 8px; word-break: break-all; }
+  input[type="file"] { display: none; }
+
+  .panel {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px; margin-bottom: 16px; display: none;
+  }
+  .panel.visible { display: block; }
+  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; font-size: 0.85rem; }
+  .info-grid .label { color: var(--text-dim); }
+  .info-grid .value { color: var(--text); font-weight: 500; text-align: right; }
+
+  .method-desc {
+    background: var(--surface2); border-radius: 10px; padding: 12px 16px;
+    font-size: 0.8rem; color: var(--text-dim); margin-bottom: 16px;
+    line-height: 1.6; border-left: 3px solid var(--accent);
+  }
+  .method-desc strong { color: var(--text); }
+  .method-desc code { background: rgba(108,92,231,0.2); padding: 1px 5px; border-radius: 4px; font-size: 0.75rem; }
+
+  .option-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 0.85rem;
+  }
+  .option-row:last-child { border-bottom: none; }
+  .option-row select {
+    background: var(--surface2); border: 1px solid var(--border); color: var(--text);
+    padding: 6px 10px; border-radius: 8px; font-size: 0.85rem; outline: none;
+  }
+  .option-row select:focus { border-color: var(--accent); }
+
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 14px 28px; border: none; border-radius: 12px;
+    font-weight: 700; font-size: 0.95rem; cursor: pointer;
+    transition: all 0.2s; width: 100%; margin-bottom: 12px;
+  }
+  .btn-primary { background: linear-gradient(135deg, var(--accent), #8e7cf0); color: #fff; box-shadow: 0 4px 16px rgba(108,92,231,0.3); }
+  .btn-primary:hover:not(:disabled) { transform: translateY(-1px); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-download { background: linear-gradient(135deg, var(--success), #00b894); color: #0f1117; display: none; }
+  .btn-download.visible { display: inline-flex; }
+
+  .progress-wrap { background: var(--surface); border-radius: 10px; height: 8px; overflow: hidden; margin-bottom: 12px; display: none; }
+  .progress-wrap.visible { display: block; }
+  .progress-bar { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), var(--success)); transition: width 0.3s; }
+
+  .log {
+    background: #0a0c10; border: 1px solid var(--border); border-radius: 10px;
+    padding: 12px 16px; font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 0.75rem; color: var(--text-dim); max-height: 200px;
+    overflow-y: auto; margin-bottom: 16px; display: none;
+    white-space: pre-wrap; word-break: break-all;
+  }
+  .log.visible { display: block; }
+  .log .ok { color: var(--success); }
+  .log .warn { color: var(--warning); }
+  .log .err { color: var(--danger); }
+  .log .info { color: var(--accent2); }
+
+  .preview-wrap {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px; margin-bottom: 16px;
+    display: none; text-align: center;
+  }
+  .preview-wrap.visible { display: block; }
+  .preview-wrap h3 { font-size: 0.9rem; color: var(--text-dim); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .preview-wrap video { max-width: 100%; max-height: 320px; border-radius: 8px; background: #000; }
+  .preview-status { margin-top: 10px; font-size: 0.85rem; font-weight: 600; }
+
+  .footer-note { text-align: center; font-size: 0.75rem; color: var(--text-dim); margin-top: 24px; line-height: 1.6; }
+
+  @media (max-width: 600px) {
+    header h1 { font-size: 1.3rem; }
+    .tabs { flex-direction: column; }
+    .info-grid { grid-template-columns: 1fr; }
+    .option-row { flex-direction: column; align-items: flex-start; gap: 6px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>🎬 MP4 Patcher <span class="version-badge">v2</span></h1>
+    <p>Bypass kompresi TikTok — 100% client-side, privasi terjaga</p>
+  </header>
+
+  <div class="tabs">
+    <button class="tab active" data-mode="mvhd">🏷️ Mode 1: Patch Header mvhd (Rekomendasi)</button>
+    <button class="tab" data-mode="padding">📦 Mode 2: Safe Padding</button>
+  </div>
+
+  <div class="method-desc" id="methodDesc">
+    <strong>Mode 1 — Patch Header mvhd:</strong> Mengubah header <code>mvhd</code> dengan menetapkan durasi ke nilai maksimum dan meng-upgrade ke versi 1. Semua chunk offset di <code>stco</code>/<code>co64</code> dihitung ulang secara presisi. <strong>Data video tidak disentuh sama sekali</strong> — kualitas 100% asli dan video tetap bisa diputar.
+  </div>
+
+  <div class="dropzone" id="dropzone">
+    <div class="icon">📁</div>
+    <p>Klik atau seret file MP4/MOV ke sini</p>
+    <div class="filename" id="filename"></div>
+    <input type="file" id="fileInput" accept="video/mp4,video/quicktime,.mp4,.mov">
+  </div>
+
+  <div class="panel" id="infoPanel">
+    <div class="info-grid" id="infoGrid"></div>
+  </div>
+
+  <div class="panel" id="optionsPanel">
+    <div id="mvhdOptions">
+      <div class="option-row">
+        <label>Durasi mvhd</label>
+        <span style="color:var(--text-dim);font-size:0.8rem;">Set ke nilai maksimum (0xFFFFFFFFFFFFFFFF)</span>
+      </div>
+      <div class="option-row">
+        <label>Konversi versi</label>
+        <span style="color:var(--text-dim);font-size:0.8rem;">v0 → v1 (otomatis, +12 byte)</span>
+      </div>
+    </div>
+    <div id="paddingOptions" style="display:none;">
+      <div class="option-row">
+        <label>Jumlah padding</label>
+        <select id="paddingAmount">
+          <option value="50">50 MB</option>
+          <option value="100" selected>100 MB</option>
+          <option value="200">200 MB</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <button class="btn btn-primary" id="processBtn" disabled>🚀 Proses Video</button>
+  <div class="progress-wrap" id="progressWrap"><div class="progress-bar" id="progressBar"></div></div>
+  <div class="log" id="log"></div>
+
+  <div class="preview-wrap" id="previewWrap">
+    <h3>🔍 Preview Hasil Patch</h3>
+    <video id="previewVideo" controls playsinline></video>
+    <div class="preview-status" id="previewStatus"></div>
+  </div>
+
+  <button class="btn btn-download" id="downloadBtn">⬇️ Unduh Hasil</button>
+
+  <div class="footer-note">
+    ⚠️ Hasil dapat bervariasi tergantung kebijakan TikTok. Gunakan sesuai Ketentuan Layanan. Semua proses lokal di browser Anda.
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   BINARY UTILITIES — 32-bit & 64-bit (BigInt)
+   ============================================================ */
+function readU32(b, o) { return (b[o]<<24 | b[o+1]<<16 | b[o+2]<<8 | b[o+3]) >>> 0; }
+function writeU32(b, o, v) {
+  v = v >>> 0;
+  b[o]=(v>>>24)&0xff; b[o+1]=(v>>>16)&0xff; b[o+2]=(v>>>8)&0xff; b[o+3]=v&0xff;
+}
+function readU64(b, o) {
+  let v = 0n;
+  for (let i = 0; i < 8; i++) v = (v << 8n) | BigInt(b[o+i]);
+  return v;
+}
+function writeU64(b, o, v) {
+  let big = typeof v === 'bigint' ? v : BigInt(v);
+  for (let i = 7; i >= 0; i--) { b[o+i] = Number(big & 0xFFn); big >>= 8n; }
+}
+function writeU64Max(b, o) {
+  for (let i = 0; i < 8; i++) b[o+i] = 0xFF;
+}
+
+/* ============================================================
+   BOX PARSER
+   ============================================================ */
+function readBoxHeader(b, o) {
+  if (o + 8 > b.length) return null;
+  let size = readU32(b, o);
+  const type = String.fromCharCode(b[o+4], b[o+5], b[o+6], b[o+7]);
+  let headerSize = 8;
+  if (size === 1) {
+    if (o + 16 > b.length) return null;
+    size = Number(readU64(b, o + 8));
+    headerSize = 16;
+  } else if (size === 0) {
+    size = b.length - o;
+  }
+  return { size, type, headerSize, offset: o };
+}
+function* iterBoxes(b, start, end) {
+  let o = start;
+  while (o + 8 <= end) {
+    const box = readBoxHeader(b, o);
+    if (!box || box.size < 8) break;
+    yield box;
+    o += box.size;
+  }
+}
+function findBox(b, start, end, type) {
+  for (const box of iterBoxes(b, start, end)) if (box.type === type) return box;
+  return null;
+}
+function findBoxPath(b, start, end, path) {
+  let s = start, e = end;
+  for (let i = 0; i < path.length; i++) {
+    const box = findBox(b, s, e, path[i]);
+    if (!box) return null;
+    if (i === path.length - 1) return box;
+    s = box.offset + box.headerSize;
+    e = box.offset + box.size;
+  }
+  return null;
+}
+
+/* ============================================================
+   MODE 1 — PATCH HEADER mvhd (FIXED)
+   ============================================================ */
+function patchMvhd(originalBuffer, log) {
+  const buf = new Uint8Array(originalBuffer);
+  const moov = findBox(buf, 0, buf.length, 'moov');
+  if (!moov) throw new Error('Box moov tidak ditemukan');
+  const mvhd = findBox(buf, moov.offset + moov.headerSize, moov.offset + moov.size, 'mvhd');
+  if (!mvhd) throw new Error('Box mvhd tidak ditemukan');
+
+  const ver = buf[mvhd.offset + mvhd.headerSize];
+  log(`  mvhd: versi ${ver}, ukuran ${mvhd.size} byte`, 'info');
+
+  let newMvhdSize, moovSizeDelta = 0;
+  if (ver === 0) {
+    newMvhdSize = mvhd.size + 12;
+    moovSizeDelta = 12;
+    log('  Upgrade mvhd v0 → v1 (+12 byte)', 'warn');
+  } else {
+    newMvhdSize = mvhd.size;
+    log('  mvhd sudah v1, hanya ubah duration', 'info');
+  }
+
+  const oldMoovSize = moov.size;
+  const newMoovSize = oldMoovSize + moovSizeDelta;
+  const newBuf = new Uint8Array(buf.length + moovSizeDelta);
+
+  // Salin header moov
+  newBuf.set(buf.subarray(moov.offset, moov.offset + moov.headerSize), moov.offset);
+  // Salin isi moov sebelum mvhd
+  newBuf.set(
+    buf.subarray(moov.offset + moov.headerSize, mvhd.offset),
+    moov.offset + moov.headerSize
+  );
+
+  const newMvhdOff = mvhd.offset; // posisi mvhd tidak berubah
+  newBuf.set(buf.subarray(mvhd.offset, mvhd.offset + mvhd.headerSize), newMvhdOff);
+  writeU32(newBuf, newMvhdOff, newMvhdSize);
+
+  const oldPayload = mvhd.offset + mvhd.headerSize;
+  const newPayload = newMvhdOff + mvhd.headerSize;
+
+  if (ver === 0) {
+    newBuf[newPayload] = 1;
+    newBuf[newPayload+1] = 0; newBuf[newPayload+2] = 0; newBuf[newPayload+3] = 0;
+
+    const creation = readU32(buf, oldPayload + 4);
+    writeU64(newBuf, newPayload + 4, BigInt(creation));
+    const modification = readU32(buf, oldPayload + 8);
+    writeU64(newBuf, newPayload + 12, BigInt(modification));
+    const timescale = readU32(buf, oldPayload + 12);
+    writeU32(newBuf, newPayload + 20, timescale);
+
+    // FIX #2: duration max ditulis langsung sebagai 8 byte 0xFF
+    writeU64Max(newBuf, newPayload + 24);
+
+    // FIX #1: offset 20 (bukan 16), restLen = payload - 20
+    const restLen = mvhd.size - mvhd.headerSize - 20;
+    newBuf.set(
+      buf.subarray(oldPayload + 20, oldPayload + 20 + restLen),
+      newPayload + 32
+    );
+    log(`  Rest payload disalin: ${restLen} byte`, 'info');
+  } else {
+    newBuf[newPayload] = 1;
+    newBuf.set(buf.subarray(oldPayload + 4, oldPayload + 24), newPayload + 4);
+    writeU64Max(newBuf, newPayload + 24);
+    const restLen = mvhd.size - mvhd.headerSize - 32;
+    if (restLen > 0) {
+      newBuf.set(
+        buf.subarray(oldPayload + 32, oldPayload + 32 + restLen),
+        newPayload + 32
+      );
+    }
+  }
+
+  // Salin sisa moov (setelah mvhd)
+  const afterMvhdSrcStart = mvhd.offset + mvhd.size;
+  const afterMvhdSrcEnd = moov.offset + moov.size;
+  newBuf.set(
+    buf.subarray(afterMvhdSrcStart, afterMvhdSrcEnd),
+    newMvhdOff + newMvhdSize
+  );
+
+  // Salin data setelah moov (mdat dll)
+  const afterMoovSrcStart = moov.offset + moov.size;
+  newBuf.set(
+    buf.subarray(afterMoovSrcStart, buf.length),
+    moov.offset + newMoovSize
+  );
+
+  // Update size moov di header
+  writeU32(newBuf, moov.offset, newMoovSize);
+
+  // FIX #3: shift chunk offset secara kondisional
+  if (moovSizeDelta !== 0) {
+    shiftChunkOffsets(newBuf, moov.offset, oldMoovSize, moovSizeDelta, log);
+  }
+
+  log('  ✅ mvhd berhasil di-patch', 'ok');
+  return newBuf;
+}
+
+function shiftChunkOffsets(buf, moovStart, oldMoovSize, delta, log) {
+  const moov = readBoxHeader(buf, moovStart);
+  if (!moov) return;
+  const oldMoovEnd = moovStart + oldMoovSize;
+  const oldMoovEndBig = BigInt(oldMoovEnd);
+  const deltaBig = BigInt(delta);
+
+  for (const trak of iterBoxes(buf, moov.offset + moov.headerSize, moov.offset + moov.size)) {
+    if (trak.type !== 'trak') continue;
+    const stbl = findBoxPath(buf, trak.offset + trak.headerSize, trak.offset + trak.size,
+      ['mdia', 'minf', 'stbl']);
+    if (!stbl) continue;
+
+    const stco = findBox(buf, stbl.offset + stbl.headerSize, stbl.offset + stbl.size, 'stco');
+    if (stco) {
+      const count = readU32(buf, stco.offset + stco.headerSize + 4);
+      const tableOff = stco.offset + stco.headerSize + 8;
+      let shifted = 0;
+      for (let i = 0; i < count; i++) {
+        const off = tableOff + i * 4;
+        if (off + 4 > buf.length) break;
+        const oldVal = readU32(buf, off);
+        if (oldVal >= oldMoovEnd) {
+          writeU32(buf, off, oldVal + delta);
+          shifted++;
+        }
+      }
+      log(`    stco: ${shifted}/${count} offset digeser +${delta}`, 'info');
+    }
+
+    const co64 = findBox(buf, stbl.offset + stbl.headerSize, stbl.offset + stbl.size, 'co64');
+    if (co64) {
+      const count = readU32(buf, co64.offset + co64.headerSize + 4);
+      const tableOff = co64.offset + co64.headerSize + 8;
+      let shifted = 0;
+      for (let i = 0; i < count; i++) {
+        const off = tableOff + i * 8;
+        if (off + 8 > buf.length) break;
+        const oldVal = readU64(buf, off);
+        if (oldVal >= oldMoovEndBig) {
+          writeU64(buf, off, oldVal + deltaBig);
+          shifted++;
+        }
+      }
+      log(`    co64: ${shifted}/${count} offset digeser +${delta}`, 'info');
+    }
+  }
+}
+
+/* ============================================================
+   MODE 2 — SAFE PADDING (tidak merusak video)
+   ============================================================ */
+function addPadding(originalBuffer, mbAmount, log) {
+  const buf = new Uint8Array(originalBuffer);
+  const paddingPayload = mbAmount * 1024 * 1024;
+  const freeBoxSize = 8 + paddingPayload;
+
+  if (freeBoxSize > 0xFFFFFFF0) throw new Error('Padding terlalu besar (>4GB)');
+
+  const newBuf = new Uint8Array(buf.length + freeBoxSize);
+  newBuf.set(buf, 0);
+
+  const off = buf.length;
+  writeU32(newBuf, off, freeBoxSize);
+  newBuf[off+4] = 0x66; // f
+  newBuf[off+5] = 0x72; // r
+  newBuf[off+6] = 0x65; // e
+  newBuf[off+7] = 0x65; // e
+
+  log(`  Padding: +${mbAmount} MB (${freeBoxSize} byte)`, 'warn');
+  log(`  Ukuran: ${buf.length} → ${newBuf.length} byte`, 'info');
+  log('  ⚠️ Mode ini hanya memperbesar file. Efek bypass belum tentu berhasil.', 'warn');
+  return newBuf;
+}
+
+/* ============================================================
+   UI LOGIC
+   ============================================================ */
+let currentMode = 'mvhd';
+let currentFile = null;
+let currentBuffer = null;
+let resultBuffer = null;
+let resultBlobURL = null;
+
+const $ = id => document.getElementById(id);
+const dropzone = $('dropzone'), fileInput = $('fileInput');
+const filenameEl = $('filename'), infoPanel = $('infoPanel'), infoGrid = $('infoGrid');
+const optionsPanel = $('optionsPanel'), mvhdOptions = $('mvhdOptions'), paddingOptions = $('paddingOptions');
+const processBtn = $('processBtn'), progressWrap = $('progressWrap'), progressBar = $('progressBar');
+const logEl = $('log'), downloadBtn = $('downloadBtn'), methodDesc = $('methodDesc');
+const previewWrap = $('previewWrap'), previewVideo = $('previewVideo'), previewStatus = $('previewStatus');
+
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    currentMode = tab.dataset.mode;
+    if (currentMode === 'mvhd') {
+      mvhdOptions.style.display = 'block';
+      paddingOptions.style.display = 'none';
+      methodDesc.innerHTML = '<strong>Mode 1 — Patch Header mvhd:</strong> Mengubah header <code>mvhd</code> dengan menetapkan durasi ke nilai maksimum dan meng-upgrade ke versi 1. Semua chunk offset di <code>stco</code>/<code>co64</code> dihitung ulang secara presisi. <strong>Data video tidak disentuh sama sekali</strong> — kualitas 100% asli dan video tetap bisa diputar.';
+    } else {
+      mvhdOptions.style.display = 'none';
+      paddingOptions.style.display = 'block';
+      methodDesc.innerHTML = '<strong>Mode 2 — Safe Padding:</strong> Menambahkan kotak <code>free</code> berukuran besar di akhir file. Struktur video 100% utuh dan tetap bisa diputar. File menjadi lebih besar; efek bypass TikTok belum tentu berhasil, tetapi <strong>tidak akan merusak video</strong>.';
+    }
+  });
+});
+
+dropzone.addEventListener('click', () => fileInput.click());
+dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragover'); });
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+dropzone.addEventListener('drop', e => {
+  e.preventDefault(); dropzone.classList.remove('dragover');
+  if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
+
+async function handleFile(file) {
+  if (!file.name.match(/\.(mp4|mov)$/i)) { alert('Hanya MP4/MOV yang didukung'); return; }
+  currentFile = file;
+  filenameEl.textContent = `${file.name} (${formatBytes(file.size)})`;
+  infoPanel.classList.remove('visible');
+  optionsPanel.classList.remove('visible');
+  previewWrap.classList.remove('visible');
+  processBtn.disabled = true;
+  downloadBtn.classList.remove('visible');
+  logEl.classList.remove('visible');
+  progressWrap.classList.remove('visible');
+  resultBuffer = null;
+  if (resultBlobURL) { URL.revokeObjectURL(resultBlobURL); resultBlobURL = null; }
+
+  try {
+    currentBuffer = await file.arrayBuffer();
+    analyzeFile(currentBuffer);
+    optionsPanel.classList.add('visible');
+    processBtn.disabled = false;
+  } catch (err) { alert('Gagal baca file: ' + err.message); }
+}
+
+function formatBytes(b) {
+  if (b < 1024) return b + ' B';
+  if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
+  return (b/1048576).toFixed(2) + ' MB';
+}
+
+function analyzeFile(buffer) {
+  const buf = new Uint8Array(buffer);
+  const ftyp = findBox(buf, 0, buf.length, 'ftyp');
+  const moov = findBox(buf, 0, buf.length, 'moov');
+  const mdat = findBox(buf, 0, buf.length, 'mdat');
+
+  let videoCodec = '-', audioCodec = '-', resolution = '-';
+  if (moov) {
+    for (const box of iterBoxes(buf, moov.offset + moov.headerSize, moov.offset + moov.size)) {
+      if (box.type !== 'trak') continue;
+      const mdia = findBox(buf, box.offset + box.headerSize, box.offset + box.size, 'mdia');
+      if (!mdia) continue;
+      const hdlr = findBox(buf, mdia.offset + mdia.headerSize, mdia.offset + mdia.size, 'hdlr');
+      const stbl = findBoxPath(buf, mdia.offset + mdia.headerSize, mdia.offset + mdia.size, ['minf','stbl']);
+      if (!stbl) continue;
+
+      let handler = '';
+      if (hdlr) {
+        const tOff = hdlr.offset + hdlr.headerSize + 8;
+        handler = String.fromCharCode(buf[tOff], buf[tOff+1], buf[tOff+2], buf[tOff+3]);
+      }
+      const stsd = findBox(buf, stbl.offset + stbl.headerSize, stbl.offset + stbl.size, 'stsd');
+      let codec = '?';
+      if (stsd) {
+        const entryOff = stsd.offset + stsd.headerSize + 8;
+        const entry = readBoxHeader(buf, entryOff);
+        if (entry) codec = entry.type;
+      }
+
+      if (handler === 'vide') {
+        videoCodec = codec;
+        // Ambil resolusi dari tkhd
+        const tkhd = findBox(buf, box.offset + box.headerSize, box.offset + box.size, 'tkhd');
+        if (tkhd) {
+          const ver = buf[tkhd.offset + tkhd.headerSize];
+          const wOff = tkhd.offset + tkhd.headerSize + (ver === 0 ? 76 : 88);
+          if (wOff + 8 <= buf.length) {
+            const w = readU32(buf, wOff) / 65536;
+            const h = readU32(buf, wOff + 4) / 65536;
+            if (w > 0 && h > 0) resolution = `${Math.round(w)}×${Math.round(h)}`;
+          }
+        }
+      } else if (handler === 'soun') {
+        audioCodec = codec;
+      }
+    }
+  }
+
+  const mvhdVer = moov ? (() => {
+    const m = findBox(buf, moov.offset + moov.headerSize, moov.offset + moov.size, 'mvhd');
+    return m ? buf[m.offset + m.headerSize] : '?';
+  })() : '?';
+
+  infoGrid.innerHTML = `
+    <div class="label">Format</div><div class="value">${ftyp ? 'MP4/MOV' : 'Unknown'}</div>
+    <div class="label">Ukuran</div><div class="value">${formatBytes(buffer.byteLength)}</div>
+    <div class="label">Codec Video</div><div class="value">${videoCodec}</div>
+    <div class="label">Codec Audio</div><div class="value">${audioCodec}</div>
+    <div class="label">Resolusi</div><div class="value">${resolution}</div>
+    <div class="label">Versi mvhd</div><div class="value">v${mvhdVer}</div>
+    <div class="label">Moov sebelum Mdat</div><div class="value">${moov && mdat && moov.offset < mdat.offset ? 'Ya (faststart)' : 'Tidak'}</div>
+  `;
+  infoPanel.classList.add('visible');
+}
+
+processBtn.addEventListener('click', async () => {
+  if (!currentBuffer) return;
+  processBtn.disabled = true;
+  downloadBtn.classList.remove('visible');
+  previewWrap.classList.remove('visible');
+  progressWrap.classList.add('visible');
+  progressBar.style.width = '0%';
+  logEl.classList.add('visible');
+  logEl.textContent = '';
+
+  const log = (msg, cls = '') => {
+    const span = document.createElement('span');
+    if (cls) span.className = cls;
+    span.textContent = msg + '\n';
+    logEl.appendChild(span);
+    logEl.scrollTop = logEl.scrollHeight;
+  };
+
+  try {
+    log('▶ Memulai pemrosesan...', 'info');
+    progressBar.style.width = '15%';
+    await new Promise(r => setTimeout(r, 50));
+
+    let result;
+    if (currentMode === 'mvhd') {
+      log('Mode: Patch Header mvhd', 'info');
+      progressBar.style.width = '35%';
+      await new Promise(r => setTimeout(r, 50));
+      result = patchMvhd(currentBuffer, log);
+    } else {
+      const mb = parseInt($('paddingAmount').value, 10);
+      log(`Mode: Safe Padding (+${mb} MB)`, 'info');
+      progressBar.style.width = '35%';
+      await new Promise(r => setTimeout(r, 50));
+      result = addPadding(currentBuffer, mb, log);
+    }
+
+    progressBar.style.width = '75%';
+    resultBuffer = result;
+    await new Promise(r => setTimeout(r, 50));
+
+    if (resultBlobURL) URL.revokeObjectURL(resultBlobURL);
+    const blob = new Blob([resultBuffer], { type: 'video/mp4' });
+    resultBlobURL = URL.createObjectURL(blob);
+
+    // Preview untuk verifikasi
+    previewVideo.src = resultBlobURL;
+    previewVideo.load();
+    previewWrap.classList.add('visible');
+    previewStatus.textContent = '⏳ Memverifikasi file...';
+    previewStatus.style.color = 'var(--text-dim)';
+
+    const verifyPromise = new Promise(resolve => {
+      const timer = setTimeout(() => resolve('timeout'), 5000);
+      previewVideo.onloadedmetadata = () => { clearTimeout(timer); resolve('ok'); };
+      previewVideo.onerror = () => { clearTimeout(timer); resolve('error'); };
+    });
+
+    const verifyResult = await verifyPromise;
+    if (verifyResult === 'ok') {
+      previewStatus.textContent = '✅ File valid — struktur video bisa dibaca';
+      previewStatus.style.color = 'var(--success)';
+      log('✅ Verifikasi: file berhasil dimuat oleh player', 'ok');
+    } else if (verifyResult === 'error') {
+      previewStatus.textContent = '❌ File rusak — jangan diunggah';
+      previewStatus.style.color = 'var(--danger)';
+      log('❌ Verifikasi: file GAGAL dimuat. Jangan diunggah!', 'err');
+    } else {
+      previewStatus.textContent = '⚠️ Verifikasi timeout — cek manual';
+      previewStatus.style.color = 'var(--warning)';
+      log('⚠️ Verifikasi timeout, coba putar manual', 'warn');
+    }
+
+    downloadBtn.onclick = () => {
+      const a = document.createElement('a');
+      a.href = resultBlobURL;
+      a.download = currentFile.name.replace(/\.(mp4|mov)$/i, '_patched.mp4');
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    };
+
+    progressBar.style.width = '100%';
+    log('✅ Selesai! Unduh file dan unggah ke TikTok.', 'ok');
+    downloadBtn.classList.add('visible');
+  } catch (err) {
+    log('❌ Error: ' + err.message, 'err');
+    progressBar.style.width = '0%';
+    console.error(err);
+  } finally {
+    processBtn.disabled = false;
+  }
+});
+</script>
+</body>
+</html>
