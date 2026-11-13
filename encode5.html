@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MP4 Patcher v6 — NoBlur Inflate (Faithful Port)</title>
+<style>
+  :root {
+    --bg: #0f1117; --surface: #1a1d27; --surface2: #242836;
+    --border: #2e3345; --text: #e8eaf0; --text-dim: #8b90a5;
+    --accent: #6c5ce7; --accent2: #a29bfe; --success: #00cec9;
+    --warning: #fdcb6e; --danger: #ff7675; --radius: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text);
+    min-height: 100vh; padding: 24px 16px 60px; line-height: 1.5; }
+  .container { max-width: 900px; margin: 0 auto; }
+  header { text-align: center; margin-bottom: 24px; }
+  header h1 { font-size: 1.8rem; font-weight: 700;
+    background: linear-gradient(135deg, var(--accent2), var(--success));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 6px; }
+  header p { color: var(--text-dim); font-size: 0.9rem; }
+  .version-badge { display: inline-block; background: var(--success); color: var(--bg);
+    padding: 2px 10px; border-radius: 20px; font-size: 0.7rem; font-weight: 700;
+    margin-left: 8px; vertical-align: middle; }
+
+  .method-desc { background: var(--surface2); border-radius: 10px; padding: 16px;
+    font-size: 0.82rem; color: var(--text-dim); margin-bottom: 20px;
+    line-height: 1.7; border-left: 4px solid var(--success); }
+  .method-desc strong { color: var(--text); }
+  .method-desc code { background: rgba(0,206,201,0.15); padding: 2px 6px;
+    border-radius: 4px; font-size: 0.78rem; color: var(--success); }
+
+  .dropzone { border: 2px dashed var(--border); border-radius: var(--radius);
+    padding: 40px 20px; text-align: center; cursor: pointer; transition: all 0.2s;
+    background: var(--surface); margin-bottom: 16px; }
+  .dropzone:hover, .dropzone.dragover { border-color: var(--accent); background: rgba(108,92,231,0.08); }
+  .dropzone .icon { font-size: 2.4rem; margin-bottom: 10px; }
+  .dropzone p { color: var(--text-dim); font-size: 0.9rem; }
+  .dropzone .filename { color: var(--accent2); font-weight: 600; margin-top: 8px; word-break: break-all; }
+  input[type="file"] { display: none; }
+
+  .panel { background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px; margin-bottom: 16px; display: none; }
+  .panel.visible { display: block; }
+  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; font-size: 0.85rem; }
+  .info-grid .label { color: var(--text-dim); }
+  .info-grid .value { color: var(--text); font-weight: 500; text-align: right; }
+  .info-grid .value.warn { color: var(--warning); }
+  .info-grid .value.err { color: var(--danger); }
+
+  .options { background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px; margin-bottom: 16px; display: none; }
+  .options.visible { display: block; }
+  .option-row { display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 0.85rem; gap: 12px; }
+  .option-row:last-child { border-bottom: none; }
+  .option-row select { background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text); padding: 6px 10px; border-radius: 8px; font-size: 0.85rem; outline: none; }
+  .option-row select:focus { border-color: var(--accent); }
+  .option-hint { color: var(--text-dim); font-size: 0.75rem; margin-top: 4px; }
+
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 14px 28px; border: none; border-radius: 12px; font-weight: 700;
+    font-size: 0.95rem; cursor: pointer; transition: all 0.2s; width: 100%; margin-bottom: 12px; }
+  .btn-primary { background: linear-gradient(135deg, var(--accent), #8e7cf0);
+    color: #fff; box-shadow: 0 4px 16px rgba(108,92,231,0.3); }
+  .btn-primary:hover:not(:disabled) { transform: translateY(-1px); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-download { background: linear-gradient(135deg, var(--success), #00b894);
+    color: #0f1117; display: none; }
+  .btn-download.visible { display: inline-flex; }
+
+  .progress-wrap { background: var(--surface); border-radius: 10px; height: 8px;
+    overflow: hidden; margin-bottom: 12px; display: none; }
+  .progress-wrap.visible { display: block; }
+  .progress-bar { height: 100%; width: 0%;
+    background: linear-gradient(90deg, var(--accent), var(--success)); transition: width 0.3s; }
+
+  .log { background: #0a0c10; border: 1px solid var(--border); border-radius: 10px;
+    padding: 12px 16px; font-family: 'Consolas', 'Monaco', monospace; font-size: 0.72rem;
+    color: var(--text-dim); max-height: 260px; overflow-y: auto; margin-bottom: 16px;
+    display: none; white-space: pre-wrap; word-break: break-all; }
+  .log.visible { display: block; }
+  .log .ok { color: var(--success); }
+  .log .warn { color: var(--warning); }
+  .log .err { color: var(--danger); }
+  .log .info { color: var(--accent2); }
+
+  .preview-wrap { background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px; margin-bottom: 16px;
+    display: none; text-align: center; }
+  .preview-wrap.visible { display: block; }
+  .preview-wrap h3 { font-size: 0.85rem; color: var(--text-dim); margin-bottom: 12px;
+    text-transform: uppercase; letter-spacing: 0.5px; }
+  .preview-wrap video { max-width: 100%; max-height: 240px; border-radius: 8px; background: #000; }
+  .preview-status { margin-top: 10px; font-size: 0.82rem; font-weight: 600; }
+
+  .footer-note { text-align: center; font-size: 0.72rem; color: var(--text-dim);
+    margin-top: 24px; line-height: 1.6; }
+
+  @media (max-width: 600px) {
+    header h1 { font-size: 1.3rem; }
+    .info-grid { grid-template-columns: 1fr; }
+    .option-row { flex-direction: column; align-items: flex-start; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>🎬 MP4 Patcher <span class="version-badge">v6 NoBlur Port</span></h1>
+    <p>Sample Table Inflation — 10x, 100% kualitas asli, tanpa re-encode</p>
+  </header>
+
+  <div class="method-desc">
+    <strong>Metode: Sample Table Inflation (NoBlur):</strong> Ini adalah port langsung dari algoritma <code>mp4-inflate.mjs</code> milik NoBlur. Cara kerjanya:
+    <br>1. <strong>Menggelembungkan tabel sampel video 10x</strong> (<code>stts</code>, <code>stsz</code>, <code>stsc</code>, <code>stco</code>/<code>co64</code>).
+    <br>2. Menambahkan <strong>sampel dummy</strong> (8–16 byte per codec) di akhir file.
+    <br>3. TikTok melihat video dengan kepadatan data sangat tinggi dan melewati rekompresi agresif.
+    <br><br><strong>Data video asli (<code>mdat</code>) tidak disentuh.</strong> Kualitas 100% asli. File hasil patch <strong>harusnya bisa diputar</strong> di TikTok.
+  </div>
+
+  <div class="dropzone" id="dropzone">
+    <div class="icon">📁</div>
+    <p>Klik atau seret file MP4/MOV ke sini</p>
+    <div class="filename" id="filename"></div>
+    <input type="file" id="fileInput" accept="video/mp4,video/quicktime,.mp4,.mov">
+  </div>
+
+  <div class="panel" id="infoPanel">
+    <div class="info-grid" id="infoGrid"></div>
+  </div>
+
+  <div class="options" id="optionsPanel">
+    <div class="option-row">
+      <label for="inflateFactor">Faktor inflasi tabel sampel</label>
+      <select id="inflateFactor">
+        <option value="10" selected>10x (Standar NoBlur) ★</option>
+        <option value="5">5x (Lebih ringan)</option>
+        <option value="20">20x (Sangat agresif)</option>
+      </select>
+    </div>
+    <div class="option-hint">
+      ★ <strong>10x</strong> adalah nilai default NoBlur. Coba 20x jika masih gagal.
+    </div>
+  </div>
+
+  <button class="btn btn-primary" id="processBtn" disabled>🚀 Proses Video (NoBlur Inflate)</button>
+  <div class="progress-wrap" id="progressWrap"><div class="progress-bar" id="progressBar"></div></div>
+  <div class="log" id="log"></div>
+
+  <div class="preview-wrap" id="previewWrap">
+    <h3>🔍 Verifikasi Hasil</h3>
+    <video id="previewVideo" controls playsinline preload="metadata"></video>
+    <div class="preview-status" id="previewStatus"></div>
+  </div>
+
+  <button class="btn btn-download" id="downloadBtn">⬇️ Unduh Hasil</button>
+
+  <div class="footer-note">
+    ⚠️ Unggah melalui <strong>TikTok Studio di browser desktop</strong>. Jangan melalui aplikasi mobile.
+    Hasil bervariasi tergantung kebijakan TikTok.
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   BINARY UTILITIES
+   ============================================================ */
+function readU32(b, o) { return (b[o]<<24 | b[o+1]<<16 | b[o+2]<<8 | b[o+3]) >>> 0; }
+function writeU32(b, o, v) {
+  v = v >>> 0;
+  b[o]=(v>>>24)&0xff; b[o+1]=(v>>>16)&0xff; b[o+2]=(v>>>8)&0xff; b[o+3]=v&0xff;
+}
+function readU64(b, o) {
+  let v = 0n;
+  for (let i = 0; i < 8; i++) v = (v << 8n) | BigInt(b[o+i]);
+  return v;
+}
+function writeU64(b, o, v) {
+  let big = typeof v === 'bigint' ? v : BigInt(v);
+  for (let i = 7; i >= 0; i--) { b[o+i] = Number(big & 0xFFn); big >>= 8n; }
+}
+
+/* ============================================================
+   BOX PARSER (port dari mp4-boxes.mjs)
+   ============================================================ */
+function parseBoxes(bytes, view, startOffset, endOffset) {
+  const boxes = [];
+  let offset = startOffset;
+  while (offset + 8 <= endOffset) {
+    const rawSize = view.getUint32(offset, false);
+    let size;
+    let is64Bit = false;
+    if (rawSize === 0) {
+      size = endOffset - offset;
+    } else if (rawSize === 1) {
+      is64Bit = true;
+      if (offset + 16 > endOffset) break;
+      const hi = view.getUint32(offset + 8, false);
+      const lo = view.getUint32(offset + 12, false);
+      const sizeBig = (BigInt(hi) << 32n) + BigInt(lo);
+      if (sizeBig > BigInt(Number.MAX_SAFE_INTEGER)) break;
+      size = Number(sizeBig);
+    } else {
+      size = rawSize;
+    }
+    if (size < 8 || offset + size > endOffset) break;
+    const type = String.fromCharCode(bytes[offset+4], bytes[offset+5], bytes[offset+6], bytes[offset+7]);
+    boxes.push({ offset, size, type, end: offset + size, is64Bit });
+    offset += size;
+  }
+  return boxes;
+}
+
+function getBoxHeaderSize(box) { return box.is64Bit ? 16 : 8; }
+
+function detectCodecFromStbl(bytes, stblBox) {
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const children = parseBoxes(bytes, view, stblBox.offset + getBoxHeaderSize(stblBox), stblBox.end);
+  const stsdBox = children.find(b => b.type === 'stsd');
+  if (!stsdBox) return 'unknown';
+  const contentStart = stsdBox.offset + getBoxHeaderSize(stsdBox);
+  if (contentStart + 16 > stsdBox.end) return 'unknown';
+  return String.fromCharCode(bytes[contentStart+12], bytes[contentStart+13], bytes[contentStart+14], bytes[contentStart+15]);
+}
+
+function updateBoxSize(view, offset, box, addedBytes) {
+  if (box.is64Bit) {
+    view.setBigUint64(offset + 8, BigInt(box.size + addedBytes), false);
+  } else {
+    view.setUint32(offset, box.size + addedBytes, false);
+  }
+}
+
+function updateChunkOffsets(newBytes, newView, boxStart, boxEnd, delta) {
+  const containerTypes = new Set(['moov', 'trak', 'mdia', 'minf', 'stbl']);
+  for (const box of parseBoxes(newBytes, newView, boxStart, boxEnd)) {
+    if (box.type === 'stco') {
+      const headerSize = getBoxHeaderSize(box);
+      const count = newView.getUint32(box.offset + headerSize + 4, false);
+      for (let i = 0; i < count; i++) {
+        const pos = box.offset + headerSize + 8 + i * 4;
+        newView.setUint32(pos, newView.getUint32(pos, false) + delta, false);
+      }
+    } else if (box.type === 'co64') {
+      const headerSize = getBoxHeaderSize(box);
+      const count = newView.getUint32(box.offset + headerSize + 4, false);
+      for (let i = 0; i < count; i++) {
+        const pos = box.offset + headerSize + 8 + i * 8;
+        newView.setBigUint64(pos, newView.getBigUint64(pos, false) + BigInt(delta), false);
+      }
+    } else if (containerTypes.has(box.type)) {
+      updateChunkOffsets(newBytes, newView, box.offset + getBoxHeaderSize(box), box.end, delta);
+    }
+  }
+}
+
+/* ============================================================
+   ATOM BUILDERS (port dari mp4-inflate.mjs)
+   ============================================================ */
+const DUMMY_SIZES = { avc1: 8, avc3: 8, hvc1: 16, hev1: 16, vp09: 4, av01: 4, mp4v: 8 };
+const DEFAULT_DUMMY_SIZE = 8;
+
+function buildSttsAtom(realCount, sampleDelta, multiplier) {
+  const fakeCount = realCount * (multiplier - 1);
+  const atomSize = 16 + 2 * 8;
+  const buffer = new ArrayBuffer(atomSize);
+  const b = new Uint8Array(buffer);
+  const v = new DataView(buffer);
+  v.setUint32(0, atomSize, false);
+  b[4]=0x73; b[5]=0x74; b[6]=0x74; b[7]=0x73; // stts
+  v.setUint32(8, 0, false);
+  v.setUint32(12, 2, false);
+  v.setUint32(16, realCount, false);
+  v.setUint32(20, sampleDelta, false);
+  v.setUint32(24, fakeCount, false);
+  v.setUint32(28, sampleDelta, false);
+  return b;
+}
+
+function buildStszAtom(inputBytes, inputView, stszBox, realCount, multiplier, dummySize) {
+  const totalCount = realCount * multiplier;
+  const atomSize = 20 + totalCount * 4;
+  const buffer = new ArrayBuffer(atomSize);
+  const b = new Uint8Array(buffer);
+  const v = new DataView(buffer);
+  v.setUint32(0, atomSize, false);
+  b[4]=0x73; b[5]=0x74; b[6]=0x73; b[7]=0x7a; // stsz
+  v.setUint32(8, 0, false);
+  v.setUint32(12, 0, false);
+  v.setUint32(16, totalCount, false);
+  const srcBase = stszBox.offset + 20;
+  for (let i = 0; i < realCount; i++) {
+    v.setUint32(20 + i * 4, inputView.getUint32(srcBase + i * 4, false), false);
+  }
+  for (let i = realCount; i < totalCount; i++) {
+    v.setUint32(20 + i * 4, dummySize, false);
+  }
+  return b;
+}
+
+function buildStscPatch(inputBytes, inputView, stscBox, origStcoCount) {
+  const origEntryCount = inputView.getUint32(stscBox.offset + 12, false);
+  const newEntryCount = origEntryCount + 1;
+  const atomSize = 16 + newEntryCount * 12;
+  const buffer = new ArrayBuffer(atomSize);
+  const b = new Uint8Array(buffer);
+  const v = new DataView(buffer);
+  v.setUint32(0, atomSize, false);
+  b[4]=0x73; b[5]=0x74; b[6]=0x73; b[7]=0x63; // stsc
+  v.setUint32(8, 0, false);
+  v.setUint32(12, newEntryCount, false);
+  const srcBase = stscBox.offset + 16;
+  for (let i = 0; i < origEntryCount; i++) {
+    const fc = inputView.getUint32(srcBase + i * 12, false);
+    const spc = inputView.getUint32(srcBase + i * 12 + 4, false);
+    const sdi = inputView.getUint32(srcBase + i * 12 + 8, false);
+    v.setUint32(16 + i * 12, fc, false);
+    v.setUint32(16 + i * 12 + 4, spc, false);
+    v.setUint32(16 + i * 12 + 8, sdi, false);
+  }
+  v.setUint32(16 + origEntryCount * 12, origStcoCount + 1, false);
+  v.setUint32(16 + origEntryCount * 12 + 4, 1, false);
+  v.setUint32(16 + origEntryCount * 12 + 8, 1, false);
+  return b;
+}
+
+function buildStcoAtom(inputView, stcoBox, origCount, realCount, safeOffset, offsetDelta, multiplier) {
+  const fakeCount = realCount * (multiplier - 1);
+  const newCount = origCount + fakeCount;
+  const atomSize = 16 + newCount * 4;
+  const buffer = new ArrayBuffer(atomSize);
+  const b = new Uint8Array(buffer);
+  const v = new DataView(buffer);
+  v.setUint32(0, atomSize, false);
+  b[4]=0x73; b[5]=0x74; b[6]=0x63; b[7]=0x6f; // stco
+  v.setUint32(8, 0, false);
+  v.setUint32(12, newCount, false);
+  const srcBase = stcoBox.offset + 16;
+  for (let i = 0; i < origCount; i++) {
+    v.setUint32(16 + i * 4, inputView.getUint32(srcBase + i * 4, false) + offsetDelta, false);
+  }
+  for (let i = 0; i < fakeCount; i++) {
+    v.setUint32(16 + (origCount + i) * 4, safeOffset, false);
+  }
+  return b;
+}
+
+function buildCo64Atom(inputView, co64Box, origCount, realCount, safeOffset, offsetDelta, multiplier) {
+  const fakeCount = realCount * (multiplier - 1);
+  const newCount = origCount + fakeCount;
+  const atomSize = 16 + newCount * 8;
+  const buffer = new ArrayBuffer(atomSize);
+  const b = new Uint8Array(buffer);
+  const v = new DataView(buffer);
+  v.setUint32(0, atomSize, false);
+  b[4]=0x63; b[5]=0x6f; b[6]=0x36; b[7]=0x34; // co64
+  v.setUint32(8, 0, false);
+  v.setUint32(12, newCount, false);
+  const srcBase = co64Box.offset + 16;
+  const safeOffsetBig = BigInt(safeOffset);
+  const offsetDeltaBig = BigInt(offsetDelta);
+  for (let i = 0; i < origCount; i++) {
+    v.setBigUint64(16 + i * 8, inputView.getBigUint64(srcBase + i * 8, false) + offsetDeltaBig, false);
+  }
+  for (let i = 0; i < fakeCount; i++) {
+    v.setBigUint64(16 + (origCount + i) * 8, safeOffsetBig, false);
+  }
+  return b;
+}
+
+/* ============================================================
+   CORE: INFLATE SAMPLE TABLE (port dari mp4-inflate.mjs)
+   ============================================================ */
+function findVideoStbl(bytes, view, moovBox) {
+  const moovChildren = parseBoxes(bytes, view, moovBox.offset + getBoxHeaderSize(moovBox), moovBox.end);
+  for (const trak of moovChildren.filter(b => b.type === 'trak')) {
+    const trakChildren = parseBoxes(bytes, view, trak.offset + getBoxHeaderSize(trak), trak.end);
+    const mdiaBox = trakChildren.find(b => b.type === 'mdia');
+    if (!mdiaBox) continue;
+    const mdiaChildren = parseBoxes(bytes, view, mdiaBox.offset + getBoxHeaderSize(mdiaBox), mdiaBox.end);
+    const hdlrBox = mdiaChildren.find(b => b.type === 'hdlr');
+    if (!hdlrBox) continue;
+    // Cek handler type "vide"
+    let isVideo = false;
+    for (let i = hdlrBox.offset + 8; i + 4 <= hdlrBox.end; i++) {
+      if (bytes[i]===0x76 && bytes[i+1]===0x69 && bytes[i+2]===0x64 && bytes[i+3]===0x65) {
+        isVideo = true; break;
+      }
+    }
+    if (!isVideo) continue;
+    const minfBox = mdiaChildren.find(b => b.type === 'minf');
+    if (!minfBox) continue;
+    const minfChildren = parseBoxes(bytes, view, minfBox.offset + getBoxHeaderSize(minfBox), minfBox.end);
+    const stblBox = minfChildren.find(b => b.type === 'stbl');
+    if (!stblBox) continue;
+    return { trak, mdiaBox, minfBox, stblBox };
+  }
+  return null;
+}
+
+function inflateSampleTableVideo(inputBytes, inputView, multiplier = 10, log) {
+  const fileSize = inputBytes.length;
+  const topBoxes = parseBoxes(inputBytes, inputView, 0, fileSize);
+  const moovBox = topBoxes.find(b => b.type === 'moov');
+  if (!moovBox) throw new Error('Moov box not found');
+  if (multiplier < 2) throw new Error('Multiplier < 2');
+
+  const located = findVideoStbl(inputBytes, inputView, moovBox);
+  if (!located) throw new Error('Video track not found');
+  const { stblBox } = located;
+
+  const stblChildren = parseBoxes(inputBytes, inputView, stblBox.offset + getBoxHeaderSize(stblBox), stblBox.end);
+  const sttsBox = stblChildren.find(b => b.type === 'stts');
+  const stszBox = stblChildren.find(b => b.type === 'stsz');
+  const stcoBox = stblChildren.find(b => b.type === 'stco');
+  const co64Box = stblChildren.find(b => b.type === 'co64');
+  const stscBox = stblChildren.find(b => b.type === 'stsc');
+
+  if (!sttsBox || !stszBox || !stscBox) throw new Error('Required sample table box missing');
+  if (!stcoBox && !co64Box) throw new Error('Chunk offset box (stco/co64) missing');
+
+  // Hitung realCount dan totalDuration dari stts
+  const sttsEntryCount = inputView.getUint32(sttsBox.offset + 12, false);
+  let realCount = 0;
+  let totalDuration = 0;
+  const sttsBase = sttsBox.offset + 16;
+  for (let i = 0; i < sttsEntryCount; i++) {
+    const count = inputView.getUint32(sttsBase + i * 8, false);
+    const delta = inputView.getUint32(sttsBase + i * 8 + 4, false);
+    realCount += count;
+    totalDuration += count * delta;
+  }
+  if (realCount === 0) throw new Error('No video samples found');
+  const sampleDelta = Math.round(totalDuration / realCount);
+
+  const codec = detectCodecFromStbl(inputBytes, stblBox);
+  const dummySize = DUMMY_SIZES[codec] || DEFAULT_DUMMY_SIZE;
+  log(`  Codec: ${codec}, dummy: ${dummySize} byte/sample`, 'info');
+  log(`  Samples: ${realCount}, delta: ${sampleDelta}`, 'info');
+
+  const origChunkCount = stcoBox
+    ? inputView.getUint32(stcoBox.offset + 12, false)
+    : inputView.getUint32(co64Box.offset + 12, false);
+
+  // Build new atoms
+  const newStts = buildSttsAtom(realCount, sampleDelta, multiplier);
+  const newStsz = buildStszAtom(inputBytes, inputView, stszBox, realCount, multiplier, dummySize);
+  const newStsc = buildStscPatch(inputBytes, inputView, stscBox, origChunkCount);
+
+  const sttsDelta = newStts.length - sttsBox.size;
+  const stszDelta = newStsz.length - stszBox.size;
+  const stscDelta = newStsc.length - stscBox.size;
+  const fakeCount = realCount * (multiplier - 1);
+  const chunkBox = stcoBox || co64Box;
+  const chunkDelta = (stcoBox ? 16 + (origChunkCount + fakeCount) * 4 : 16 + (origChunkCount + fakeCount) * 8) - chunkBox.size;
+  const moovDelta = sttsDelta + stszDelta + stscDelta + chunkDelta;
+
+  const safeOffset = fileSize + moovDelta;
+  const newChunkBox = stcoBox
+    ? buildStcoAtom(inputView, stcoBox, origChunkCount, realCount, safeOffset, moovDelta, multiplier)
+    : buildCo64Atom(inputView, co64Box, origChunkCount, realCount, safeOffset, moovDelta, multiplier);
+
+  // Replacements sorted by offset
+  const replacements = [
+    { box: sttsBox, bytes: newStts },
+    { box: stszBox, bytes: newStsz },
+    { box: stscBox, bytes: newStsc },
+    { box: chunkBox, bytes: newChunkBox },
+  ].sort((a, b) => a.box.offset - b.box.offset);
+
+  const paddingSize = fakeCount * dummySize;
+  const newSize = fileSize + moovDelta + paddingSize;
+  const newBuffer = new ArrayBuffer(newSize);
+  const newBytes = new Uint8Array(newBuffer);
+  const newView = new DataView(newBuffer);
+
+  let readPos = 0;
+  let writePos = 0;
+  for (const rep of replacements) {
+    newBytes.set(inputBytes.subarray(readPos, rep.box.offset), writePos);
+    writePos += rep.box.offset - readPos;
+    newBytes.set(rep.bytes, writePos);
+    writePos += rep.bytes.length;
+    readPos = rep.box.end;
+  }
+  newBytes.set(inputBytes.subarray(readPos, fileSize), writePos);
+
+  // Update sizes of ancestor boxes
+  updateBoxSize(newView, stblBox.offset, stblBox, moovDelta);
+  updateBoxSize(newView, located.minfBox.offset, located.minfBox, moovDelta);
+  updateBoxSize(newView, located.mdiaBox.offset, located.mdiaBox, moovDelta);
+  updateBoxSize(newView, located.trak.offset, located.trak, moovDelta);
+  updateBoxSize(newView, moovBox.offset, moovBox, moovDelta);
+
+  // Jika moov sebelum mdat, geser chunk offset track lain (audio) sebesar moovDelta
+  const mdatBox = topBoxes.find(b => b.type === 'mdat');
+  const moovBeforeMdat = mdatBox && moovBox.offset < mdatBox.offset;
+  if (moovBeforeMdat) {
+    const updatedMoovSize = newView.getUint32(moovBox.offset, false);
+    const moovEnd = moovBox.offset + updatedMoovSize;
+    const moovChildren = parseBoxes(newBytes, newView, moovBox.offset + getBoxHeaderSize(moovBox), moovEnd);
+    for (const trak of moovChildren.filter(b => b.type === 'trak')) {
+      const trakChildren = parseBoxes(newBytes, newView, trak.offset + getBoxHeaderSize(trak), trak.end);
+      const mdiaBox2 = trakChildren.find(b => b.type === 'mdia');
+      if (!mdiaBox2) continue;
+      const mdiaChildren = parseBoxes(newBytes, newView, mdiaBox2.offset + getBoxHeaderSize(mdiaBox2), mdiaBox2.end);
+      const minfBox2 = mdiaChildren.find(b => b.type === 'minf');
+      if (!minfBox2) continue;
+      const minfChildren = parseBoxes(newBytes, newView, minfBox2.offset + getBoxHeaderSize(minfBox2), minfBox2.end);
+      const stblBox2 = minfChildren.find(b => b.type === 'stbl');
+      if (!stblBox2 || stblBox2.offset === stblBox.offset) continue;
+      const stblChildren2 = parseBoxes(newBytes, newView, stblBox2.offset + getBoxHeaderSize(stblBox2), stblBox2.end);
+      const stcoBox2 = stblChildren2.find(b => b.type === 'stco');
+      if (stcoBox2) {
+        const count = newView.getUint32(stcoBox2.offset + 12, false);
+        for (let i = 0; i < count; i++) {
+          const pos = stcoBox2.offset + 16 + i * 4;
+          newView.setUint32(pos, newView.getUint32(pos, false) + moovDelta, false);
+        }
+      }
+      const co64Box2 = stblChildren2.find(b => b.type === 'co64');
+      if (co64Box2) {
+        const count = newView.getUint32(co64Box2.offset + 12, false);
+        for (let i = 0; i < count; i++) {
+          const pos = co64Box2.offset + 16 + i * 8;
+          newView.setBigUint64(pos, newView.getBigUint64(pos, false) + BigInt(moovDelta), false);
+        }
+      }
+    }
+  }
+
+  // Dummy padding area sudah nol (default Uint8Array)
+  log(`  ✅ Inflate selesai. moovDelta=${moovDelta}, padding=${paddingSize} byte`, 'ok');
+  log(`  Size: ${fileSize} → ${newSize} byte`, 'info');
+  return newBytes;
+}
+
+/* ============================================================
+   UI LOGIC
+   ============================================================ */
+let currentFile = null;
+let currentBuffer = null;
+let resultBlobURL = null;
+
+const $ = id => document.getElementById(id);
+const dropzone = $('dropzone'), fileInput = $('fileInput');
+const filenameEl = $('filename'), infoPanel = $('infoPanel'), infoGrid = $('infoGrid');
+const optionsPanel = $('optionsPanel');
+const processBtn = $('processBtn'), progressWrap = $('progressWrap'), progressBar = $('progressBar');
+const logEl = $('log'), downloadBtn = $('downloadBtn');
+const previewWrap = $('previewWrap'), previewVideo = $('previewVideo'), previewStatus = $('previewStatus');
+
+dropzone.addEventListener('click', () => fileInput.click());
+dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragover'); });
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+dropzone.addEventListener('drop', e => {
+  e.preventDefault(); dropzone.classList.remove('dragover');
+  if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
+
+async function handleFile(file) {
+  if (!file.name.match(/\.(mp4|mov)$/i)) { alert('Hanya file MP4/MOV.'); return; }
+  currentFile = file;
+  filenameEl.textContent = `${file.name} (${formatBytes(file.size)})`;
+  infoPanel.classList.remove('visible');
+  optionsPanel.classList.remove('visible');
+  previewWrap.classList.remove('visible');
+  processBtn.disabled = true;
+  downloadBtn.classList.remove('visible');
+  logEl.classList.remove('visible');
+  progressWrap.classList.remove('visible');
+  if (resultBlobURL) { URL.revokeObjectURL(resultBlobURL); resultBlobURL = null; }
+  previewVideo.removeAttribute('src');
+  previewVideo.load();
+
+  try {
+    currentBuffer = await file.arrayBuffer();
+    analyzeFile(currentBuffer);
+    optionsPanel.classList.add('visible');
+    processBtn.disabled = false;
+  } catch (err) { alert('Gagal baca file: ' + err.message); }
+}
+
+function formatBytes(b) {
+  if (b < 1024) return b + ' B';
+  if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
+  return (b/1048576).toFixed(2) + ' MB';
+}
+
+function analyzeFile(buffer) {
+  const buf = new Uint8Array(buffer);
+  const view = new DataView(buffer);
+  const boxes = parseBoxes(buf, view, 0, buf.length);
+  const moov = boxes.find(b => b.type === 'moov');
+  const mdat = boxes.find(b => b.type === 'mdat');
+  const ftyp = boxes.find(b => b.type === 'ftyp');
+
+  let videoCodec = '-', audioCodec = '-', resolution = '-', mvhdVer = '?';
+  if (moov) {
+    const mvhd = parseBoxes(buf, view, moov.offset + getBoxHeaderSize(moov), moov.end).find(b => b.type === 'mvhd');
+    if (mvhd) mvhdVer = buf[mvhd.offset + getBoxHeaderSize(mvhd)];
+
+    for (const trak of parseBoxes(buf, view, moov.offset + getBoxHeaderSize(moov), moov.end)) {
+      if (trak.type !== 'trak') continue;
+      const trakChildren = parseBoxes(buf, view, trak.offset + getBoxHeaderSize(trak), trak.end);
+      const mdia = trakChildren.find(b => b.type === 'mdia');
+      if (!mdia) continue;
+      const mdiaChildren = parseBoxes(buf, view, mdia.offset + getBoxHeaderSize(mdia), mdia.end);
+      const hdlr = mdiaChildren.find(b => b.type === 'hdlr');
+      const minf = mdiaChildren.find(b => b.type === 'minf');
+      if (!hdlr || !minf) continue;
+      let handler = '';
+      for (let i = hdlr.offset + 8; i + 4 <= hdlr.end; i++) {
+        const c = String.fromCharCode(buf[i], buf[i+1], buf[i+2], buf[i+3]);
+        if (c === 'vide' || c === 'soun') { handler = c; break; }
+      }
+      const stbl = parseBoxes(buf, view, minf.offset + getBoxHeaderSize(minf), minf.end).find(b => b.type === 'stbl');
+      if (!stbl) continue;
+      let codec = detectCodecFromStbl(buf, stbl);
+      if (handler === 'vide') {
+        videoCodec = codec;
+        const tkhd = trakChildren.find(b => b.type === 'tkhd');
+        if (tkhd) {
+          const ver = buf[tkhd.offset + getBoxHeaderSize(tkhd)];
+          const wOff = tkhd.offset + getBoxHeaderSize(tkhd) + (ver === 0 ? 76 : 88);
+          if (wOff + 8 <= buf.length) {
+            const w = readU32(buf, wOff) / 65536;
+            const h = readU32(buf, wOff + 4) / 65536;
+            if (w > 0 && h > 0) resolution = `${Math.round(w)}×${Math.round(h)}`;
+          }
+        }
+      } else if (handler === 'soun') audioCodec = codec;
+    }
+  }
+
+  const faststart = moov && mdat && moov.offset < mdat.offset;
+  infoGrid.innerHTML = `
+    <div class="label">Format</div><div class="value">${ftyp ? 'MP4/MOV' : 'Unknown'}</div>
+    <div class="label">Ukuran</div><div class="value">${formatBytes(buffer.byteLength)}</div>
+    <div class="label">Codec Video</div><div class="value">${videoCodec}</div>
+    <div class="label">Codec Audio</div><div class="value">${audioCodec}</div>
+    <div class="label">Resolusi</div><div class="value">${resolution}</div>
+    <div class="label">Versi mvhd</div><div class="value">v${mvhdVer}</div>
+    <div class="label">Faststart</div><div class="value ${faststart ? '' : 'warn'}">${faststart ? 'Ya' : 'Tidak (mdat dulu)'}</div>
+  `;
+  infoPanel.classList.add('visible');
+}
+
+processBtn.addEventListener('click', async () => {
+  if (!currentBuffer) return;
+  processBtn.disabled = true;
+  downloadBtn.classList.remove('visible');
+  previewWrap.classList.remove('visible');
+  progressWrap.classList.add('visible');
+  progressBar.style.width = '0%';
+  logEl.classList.add('visible');
+  logEl.textContent = '';
+
+  const log = (msg, cls = '') => {
+    const span = document.createElement('span');
+    if (cls) span.className = cls;
+    span.textContent = msg + '\n';
+    logEl.appendChild(span);
+    logEl.scrollTop = logEl.scrollHeight;
+  };
+
+  try {
+    log('▶ Memulai NoBlur Inflate...', 'info');
+    progressBar.style.width = '15%';
+    await new Promise(r => setTimeout(r, 50));
+
+    const factor = parseInt($('inflateFactor').value, 10);
+    log(`Faktor inflasi: ${factor}x`, 'info');
+
+    const inputBytes = new Uint8Array(currentBuffer);
+    const inputView = new DataView(currentBuffer);
+
+    progressBar.style.width = '40%';
+    await new Promise(r => setTimeout(r, 50));
+
+    const resultBytes = inflateSampleTableVideo(inputBytes, inputView, factor, log);
+
+    progressBar.style.width = '80%';
+    if (resultBlobURL) URL.revokeObjectURL(resultBlobURL);
+    const blob = new Blob([resultBytes], { type: 'video/mp4' });
+    resultBlobURL = URL.createObjectURL(blob);
+
+    previewVideo.removeAttribute('src');
+    previewVideo.load();
+    previewWrap.classList.add('visible');
+    previewStatus.textContent = '⏳ Memverifikasi file...';
+    previewStatus.style.color = 'var(--text-dim)';
+
+    const verifyResult = await new Promise(resolve => {
+      let done = false;
+      const finish = (r) => { if (!done) { done = true; clearTimeout(timer); resolve(r); } };
+      const timer = setTimeout(() => finish('timeout'), 8000);
+      previewVideo.onloadedmetadata = () => finish('ok');
+      previewVideo.onerror = () => finish('error');
+      previewVideo.src = resultBlobURL;
+    });
+
+    if (verifyResult === 'ok') {
+      const dur = previewVideo.duration;
+      const w = previewVideo.videoWidth;
+      const h = previewVideo.videoHeight;
+      previewStatus.textContent = `✅ Video valid — ${w}×${h}, ${isFinite(dur) && dur > 0 ? dur.toFixed(1) + 's' : 'durasi tak terbatas'}`;
+      previewStatus.style.color = 'var(--success)';
+      log('✅ Player berhasil membaca file hasil patch.', 'ok');
+    } else if (verifyResult === 'error') {
+      previewStatus.textContent = '❌ File gagal dimuat. Coba faktor lain atau periksa log.';
+      previewStatus.style.color = 'var(--danger)';
+      log('❌ Player GAGAL memuat file. Jangan unggah.', 'err');
+    } else {
+      previewStatus.textContent = '⚠️ Timeout — coba putar manual.';
+      previewStatus.style.color = 'var(--warning)';
+      log('⚠️ Timeout verifikasi.', 'warn');
+    }
+
+    downloadBtn.classList.add('visible');
+    downloadBtn.onclick = () => {
+      const a = document.createElement('a');
+      a.href = resultBlobURL;
+      a.download = currentFile.name.replace(/\.(mp4|mov)$/i, '_patched_v6.mp4');
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    };
+
+    progressBar.style.width = '100%';
+    log('✅ Selesai. Unduh dan unggah via TikTok Studio.', 'ok');
+  } catch (err) {
+    log('❌ Error: ' + err.message, 'err');
+    progressBar.style.width = '0%';
+    console.error(err);
+  } finally {
+    processBtn.disabled = false;
+  }
+});
+</script>
+</body>
+</html>
