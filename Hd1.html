@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MP4 Structure Cloner - TikTok 1080p Bypass</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #121212; color: #fff; padding: 20px; max-width: 800px; margin: auto; }
+        .container { background: #1e1e1e; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        h1 { color: #00d2ff; font-size: 1.5rem; text-align: center; }
+        .drop-zone { border: 2px dashed #555; padding: 30px; text-align: center; border-radius: 8px; cursor: pointer; transition: 0.3s; margin-bottom: 20px; }
+        .drop-zone:hover { border-color: #00d2ff; background: #252525; }
+        input[type="file"] { display: none; }
+        button { background: #00d2ff; color: #000; border: none; padding: 12px 24px; font-weight: bold; border-radius: 5px; cursor: pointer; width: 100%; font-size: 1rem; transition: 0.3s; }
+        button:disabled { background: #555; cursor: not-allowed; }
+        button:hover:not(:disabled) { background: #00b0d6; }
+        .log { background: #000; color: #0f0; font-family: monospace; padding: 10px; height: 150px; overflow-y: auto; margin-top: 20px; border-radius: 5px; font-size: 0.85rem; }
+        .hidden { display: none; }
+        .note { font-size: 0.8rem; color: #ff9999; margin-top: 10px; text-align: center; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎬 MP4 Structure Cloner (1080p Bypass)</h1>
+        <p style="text-align: center; font-size: 0.9rem; color: #aaa;">Duplikasi track audio & suntik metadata `trans_type: -2`.</p>
+        
+        <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+            <p>Klik atau Seret file MP4 (Harus H.264) ke sini</p>
+            <p id="fileName" style="color: #00d2ff; font-weight: bold; margin-top: 10px;"></p>
+            <input type="file" id="fileInput" accept="video/mp4">
+        </div>
+
+        <button id="processBtn" disabled>Proses Video</button>
+        <div class="log" id="log">Menunggu file...</div>
+        
+        <a id="downloadBtn" class="hidden" style="display:block; text-align:center; margin-top: 15px; background: #4CAF50; color: white; padding: 12px; text-decoration: none; border-radius: 5px; font-weight: bold;">⬇️ Unduh Video Siap Upload</a>
+        
+        <p class="note">Catatan: Jangan upload file .mov (H.265). Pastikan video sudah MP4 (H.264).</p>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.min.js"></script>
+    <script>
+        const { FFmpeg } = FFmpegWASM;
+        const { fetchFile } = FFmpegUtil;
+
+        const ffmpeg = new FFmpeg();
+        let inputFile = null;
+        let outputUrl = null;
+
+        const logEl = document.getElementById('log');
+        const fileInput = document.getElementById('fileInput');
+        const processBtn = document.getElementById('processBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const fileNameEl = document.getElementById('fileName');
+
+        ffmpeg.on('log', ({ message }) => {
+            logEl.innerHTML += `<div>> ${message}</div>`;
+            logEl.scrollTop = logEl.scrollHeight;
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                inputFile = e.target.files[0];
+                fileNameEl.textContent = inputFile.name;
+                processBtn.disabled = false;
+                downloadBtn.classList.add('hidden');
+                logEl.innerHTML = 'File siap diproses.';
+            }
+        });
+
+        async function loadFFmpeg() {
+            if (ffmpeg.loaded) return;
+            logEl.innerHTML = 'Memuat FFmpeg WASM...';
+            await ffmpeg.load({
+                coreURL: "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.js",
+                wasmURL: "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.wasm",
+            });
+            logEl.innerHTML += '<br>✅ FFmpeg siap.';
+        }
+
+        processBtn.addEventListener('click', async () => {
+            if (!inputFile) return;
+            processBtn.disabled = true;
+            downloadBtn.classList.add('hidden');
+            logEl.innerHTML = 'Memulai proses...';
+
+            try {
+                await loadFFmpeg();
+                await ffmpeg.writeFile('input.mp4', await fetchFile(inputFile));
+
+                const metaJson = `{"aid":"2004","libevc":"0","trans_type":"-2","bitrate":"12222000","maxrate":"24444000","video_resolution":"{\\"width\\":1920,\\"height\\":1080}","video_duration":"12106","delivery_source":"2","prop_list":"{\\"biz\\":[21],\\"mid\\":[23]}","effect_list":"{}","extra":"{}"}`;
+
+                logEl.innerHTML += '<br>Menjalankan FFmpeg (Stream Copy + Duplikasi Audio)...';
+
+                // Perintah FFmpeg yang aman dan tepat sasaran
+                await ffmpeg.exec([
+                    '-i', 'input.mp4',
+                    '-map', '0:v:0',                // Ambil video track
+                    '-map', '0:a:0', '-map', '0:a:0', // Duplikasi audio track pertama
+                    '-c', 'copy',                   // Tanpa re-encode
+                    '-metadata', `encoding_tool=${metaJson}`, // Suntik metadata
+                    '-brand', 'isom',               // Ubah brand
+                    'output.mp4'
+                ]);
+
+                logEl.innerHTML += '<br>✅ FFmpeg selesai.';
+
+                let outputData = await ffmpeg.readFile('output.mp4');
+                
+                const blob = new Blob([outputData.buffer], { type: 'video/mp4' });
+                if (outputUrl) URL.revokeObjectURL(outputUrl);
+                outputUrl = URL.createObjectURL(blob);
+                
+                downloadBtn.href = outputUrl;
+                downloadBtn.download = 'tiktok_1080p_ready.mp4';
+                downloadBtn.classList.remove('hidden');
+                logEl.innerHTML += '<br>🎉 Berhasil! Silakan unduh.';
+
+            } catch (err) {
+                console.error(err);
+                logEl.innerHTML += `<br><span style="color:red">❌ Error: ${err.message}</span>`;
+            } finally {
+                processBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
